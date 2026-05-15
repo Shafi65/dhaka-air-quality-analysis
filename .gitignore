@@ -1,0 +1,10 @@
+# Generated database and cleaned data files — run sql/etl.py to reproduce
+sql/air_quality.db
+datasets/cleaned_airqualityDhaka_dataset.csv
+
+# Mac system files
+.DS_Store
+
+# Python cache
+__pycache__/
+*.pyc
