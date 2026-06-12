@@ -1,86 +1,81 @@
-# Air Quality Analysis in Dhaka
+# Dhaka Air Quality Analysis (2017–2023)
 
-## Project Overview
-This project analyzes air quality data from Dhaka between 2017 and 2023. It involves:
-- Cleaning and preprocessing datasets.
-- Exploring trends and seasonal patterns in AQI data.
-- Visualizing data through various charts and heatmaps.
-- Providing actionable insights into air quality trends.
+End-to-end analysis of 7 years of hourly PM2.5 data from the U.S. Embassy in Dhaka, Bangladesh: a Python **ETL pipeline** loading into **DuckDB**, exploratory analysis in Jupyter, and an interactive **Tableau dashboard**.
 
-## Citation information 
+**[→ View the interactive Tableau dashboard](https://public.tableau.com/views/TableauVisualizations_17343956476190/AverageAQIovertheyears?:showVizHome=no)**
 
-The data is cited from: 
-AirNow. (2024). Data source: U.S. embassies and consulates. Retrieved December 01, 2024, from https://www.airnow.gov/international/us-embassies-and-consulates/#Bangladesh$Dhaka
+## Key findings
 
-## Features of the final dataset
+- **Air quality is steadily worsening**: average AQI rose from **146 in 2017 to 171 in 2023** — a sustained upward trend into the "Unhealthy" range.
+- **Strong seasonality**: PM2.5 concentration peaks in **winter (avg NowCast ~178)**, drops by half or more during the monsoon months (April–October), and climbs again in November–December.
+- The majority of all hourly readings from 2017–2023 fall in the **"Unhealthy" AQI category**; "Good" is the rarest category in the entire dataset.
+- Pollution is consistently **higher at night** than during the day.
 
-| **Column Name**         | **Description**                                                                 |
-|--------------------------|-------------------------------------------------------------------------------|
-| DateTime                | Timestamp in hourly intervals (YYYY-MM-DD HH:MM:SS). Serves as the index.      |
-| Site                    | Location where the measurements were recorded (e.g., Dhaka).                  |
-| Parameter               | Air quality parameter measured (PM2.5 - Principal).                           |
-| Year                    | Year of the measurement (e.g., 2017, 2023).                                   |
-| Month                   | Month of the measurement (1–12).                                              |
-| Day                     | Day of the month (1–31).                                                      |
-| Hour                    | Hour of the day (0–23, in 24-hour format).                                    |
-| NowCast Conc.           | Calculated NowCast concentration of PM2.5 in micrograms per cubic meter (μg/m³).|
-| AQI                     | Air Quality Index value corresponding to PM2.5 concentration.                 |
-| AQI Category            | AQI classification based on thresholds: "Good," "Moderate," "Unhealthy," etc. |
-| Raw Conc.               | Unadjusted raw concentration of PM2.5 (μg/m³).                                |
-| Conc. Unit              | Unit of concentration measurement (UG/M3: Micrograms per cubic meter).        |
-| Duration                | Duration of measurement (fixed at 1 Hour).                                    |
-| QC Name                 | Quality Control classification of the data point (e.g., "Valid").             |
-| AQI_7Day_RollingAvg     | 7-day rolling average of AQI, calculated for trend smoothing (168 hours).     |
+## Architecture
 
-## Notebook Inlcudes:
+```
+raw CSVs (7 years, hourly)  →  sql/etl.py  →  cleaned CSV + DuckDB (air_quality table)
+                                                      ↓
+                              notebooks (EDA, seasonal decomposition, MongoDB demo)
+                                                      ↓
+                              Tableau dashboard (trends, seasonality, AQI distribution)
+```
 
-- Merging and cleaning datasets for multiple years.
-- Handling missing values, duplicates, and invalid data.
-- Categorizing AQI into levels (Good, Moderate, Hazardous, etc.).
-- Creating rolling averages and seasonal decomposition of AQI.
-- Visualizations:
-  - Correlation heatmaps.
-  - AQI trends over time.
-  - Scatter plots of concentration vs AQI.
+### ETL pipeline (`sql/etl.py`)
 
-### 2. MongoDB Queries Notebook:
-This notebook demonstrates basic MongoDB queries, including:
-- Connecting to a MongoDB database.
-- Creating, reading, updating, and deleting documents (CRUD operations).
-- Querying data using filters and aggregations.
+- **Extract**: merges 7 yearly CSVs (~61k hourly rows)
+- **Transform**: deduplicates timestamps, drops invalid/suspect sensor readings, reindexes to a continuous hourly timeline, replaces `-999` sensor placeholders, imputes gaps using month+hour group means, derives AQI categories and a 7-day (168h) rolling average
+- **Load**: writes a cleaned CSV and loads an `air_quality` table into DuckDB for SQL querying
 
+### Notebooks
 
-## Explore some of the key visualizations of the project see:
+- **`AIR QUALITY DATASET.ipynb`** — EDA: AQI trends over time, seasonal decomposition, correlation heatmaps, concentration-vs-AQI relationships
+- **`AirQualityMongoDB.ipynb`** — the same dataset in MongoDB: CRUD operations, filtered queries, and aggregations
 
-[View Interactive Tableau Dashboard](https://public.tableau.com/views/TableauVisualizations_17343956476190/AverageAQIovertheyears?:showVizHome=no)
+## Dataset
 
+Hourly PM2.5 measurements, 2017–2023. Source: [AirNow — U.S. embassies and consulates](https://www.airnow.gov/international/us-embassies-and-consulates/#Bangladesh$Dhaka) (AirNow, 2024).
 
-## Folder Structure
-air-quality-analysis/
-├── datasets/                # Datasets folder
-├── images/                  # Images folder
-├── notebooks/               # Jupyter Notebook                  
-├── README.md
-├── requirements.txt         # Dependencies
-└── .gitignore
+| Column | Description |
+|---|---|
+| DateTime | Hourly timestamp (index) |
+| NowCast Conc. | NowCast PM2.5 concentration (μg/m³) |
+| AQI | Air Quality Index value |
+| AQI Category | Good / Moderate / Unhealthy for Sensitive Groups / Unhealthy / Very Unhealthy / Hazardous |
+| Raw Conc. | Unadjusted PM2.5 concentration (μg/m³) |
+| QC Name | Sensor quality-control flag (Valid / Invalid / Suspect) |
+| AQI_7Day_RollingAvg | 168-hour rolling average of AQI |
+| Site, Parameter, Year, Month, Day, Hour, Conc. Unit, Duration | Measurement metadata |
 
-## Setup Instructions
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/yourusername/air-quality-analysis.git
-   cd air-quality-analysis
+## Project structure
 
-2. Install dependencies:
+```
+dhaka-air-quality-analysis/
+├── datasets/          # Raw yearly CSVs + cleaned output
+├── notebooks/         # EDA + MongoDB notebooks
+├── sql/               # ETL pipeline (pandas → DuckDB)
+├── images/            # Reference images
+└── requirements.txt
+```
 
-pip install -r requirements.txt
+## How to run
 
-3. Run the Jupyter notebook :)
+```bash
+git clone https://github.com/Shafi65/dhaka-air-quality-analysis.git
+cd dhaka-air-quality-analysis
+pip install -r requirements.txt duckdb
 
-jupyter notebook notebooks/air_quality_analysis.ipynb
+# 1. Build the cleaned dataset + DuckDB database
+python sql/etl.py
 
+# 2. Explore the analysis
+jupyter notebook "notebooks/AIR QUALITY DATASET.ipynb"
+```
 
+## Tech stack
 
+Python · pandas · NumPy · DuckDB (SQL) · MongoDB · statsmodels · seaborn/matplotlib · Tableau
 
+## Contact
 
-For questions or feedback, contact: [shafi.hussain65@gmail.com]
-
+Shafi Hussain · [LinkedIn](https://www.linkedin.com/in/shafi-hussain-b03631251/) · shafi.hussain65@gmail.com
