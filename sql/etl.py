@@ -49,6 +49,12 @@ def transform(df):
     for col in ["NowCast Conc.", "AQI", "Raw Conc."]:
         df[col] = df[col].replace(-999, float("nan"))
 
+    # Flag every hour whose AQI is not a real reading, before any filling happens:
+    # hours missing from the source, -999 placeholders and readings dropped by the
+    # QC filter. Comparisons across years should use only rows where aqi_imputed
+    # is false (see sql/queries.sql).
+    df["aqi_imputed"] = df["AQI"].isna()
+
     # 5. Fill gaps in categorical columns using neighbouring values
     for col in ["Site", "Parameter", "Conc. Unit", "Duration", "QC Name"]:
         df[col] = df[col].ffill().bfill()
